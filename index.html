@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wwhnetwork by geeksahil - OSI Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --border-color: #374151;
+            --text-primary: #d1d5db;
+            --text-secondary: #9ca3af;
+            --brand-color: #818cf8;
+            --brand-color-glow: rgba(129, 140, 248, 0.5);
+            --glow-shadow: 0 0 5px var(--brand-color-glow), 0 0 10px var(--brand-color-glow), 0 0 15px var(--brand-color-glow);
+            --neu-shadow-outer: 5px 5px 10px #0c111a, -5px -5px 10px #161f34;
+            --neu-shadow-inner: inset 5px 5px 10px #0c111a, inset -5px -5px 10px #161f34;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+        /* Neuromorphic & Glow Effects */
+        .neu-panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--neu-shadow-outer);
+            border-radius: 1rem;
+        }
+        .neu-inset {
+            background-color: var(--bg-primary);
+            box-shadow: var(--neu-shadow-inner);
+            border-radius: 0.75rem;
+        }
+        .neu-button {
+            background-color: var(--bg-secondary);
+            box-shadow: var(--neu-shadow-outer);
+            transition: all 0.2s ease-in-out;
+        }
+        .neu-button:hover {
+            box-shadow: none;
+            transform: translateY(1px);
+        }
+        .neu-button:active, .neu-button.active {
+            box-shadow: var(--neu-shadow-inner);
+        }
+        .glowing {
+            box-shadow: var(--glow-shadow);
+            border-color: var(--brand-color) !important;
+        }
+        .glowing-text {
+            color: var(--brand-color);
+            text-shadow: 0 0 5px var(--brand-color-glow);
+        }
+        .processing-glow {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: var(--neu-shadow-outer); border-color: var(--border-color); }
+            50% { 
+                box-shadow: var(--neu-shadow-outer), var(--glow-shadow); 
+                border-color: var(--brand-color);
+            }
+        }
+        
+        /* Layout Specifics */
+        .sidebar {
+            transition: all 0.3s ease-in-out;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-toggle {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 50;
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Wire Animations */
+        .wire { stroke-width: 3; transition: stroke 0.3s; }
+        .wire.active .marching-ants {
+            animation: marching-ants 1s linear infinite;
+        }
+        @keyframes marching-ants {
+            to { stroke-dashoffset: -20; }
+        }
+        
+        /* Packet & Tracer */
+        .packet-tracer {
+            position: absolute;
+            background: var(--brand-color);
+            border-radius: 50%;
+            box-shadow: var(--glow-shadow);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        /* Component Icon Animations */
+        .blinking-light {
+            animation: blink 2s infinite ease-in-out;
+        }
+        @keyframes blink {
+            0%, 100% { fill: #374151; }
+            50% { fill: var(--success-color); }
+        }
+
+        /* Desktop Layout */
+        @media (min-width: 1025px) {
+            #left-panel.collapsed {
+                width: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            #left-panel-toggle { left: 300px; }
+            #left-panel.collapsed + #left-panel-toggle { left: 0; }
+
+            #right-panel.collapsed {
+                width: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            #right-panel-toggle { right: 420px; }
+            #right-panel.collapsed + #right-panel-toggle { right: 0; }
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                z-index: 60;
+                border-radius: 0;
+                box-shadow: var(--neu-shadow-outer), 0 0 40px rgba(0,0,0,0.5);
+            }
+            #left-panel { width: 300px; transform: translateX(-100%); }
+            #left-panel.open { transform: translateX(0); }
+            
+            #right-panel { width: 300px; transform: translateX(100%); right: 0; }
+            #right-panel.open { transform: translateX(0); }
+
+            .sidebar-toggle {
+                background-color: var(--bg-secondary) !important;
+                box-shadow: var(--neu-shadow-outer) !important;
+                opacity: 0.8;
+                width: 40px;
+                height: 40px;
+            }
+            #left-panel-toggle { top: 20px; left: 0; transform: none; border-radius: 0 0.5rem 0.5rem 0; }
+            #right-panel-toggle { top: 20px; right: 0; transform: none; border-radius: 0.5rem 0 0 0.5rem; }
+            
+            #left-panel.open ~ #left-panel-toggle { transform: translateX(300px); }
+            #right-panel.open ~ #right-panel-toggle { transform: translateX(-300px); }
+
+            .component {
+                width: 150px;
+                padding: 0.5rem;
+            }
+            .component .text-md { font-size: 0.875rem; }
+            .component .text-xs { font-size: 0.65rem; }
+            .component svg { width: 1.5rem; height: 1.5rem; }
+            
+            #info-modal .neu-panel { max-width: 95vw; }
+            #browser-card { width: 90vw; left: 5vw; }
+        }
+    </style>
+</head>
+<body class="w-screen h-screen m-0 p-0">
+
+    <!-- Backdrop for mobile overlays -->
+    <div id="backdrop" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50"></div>
+
+    <!-- Main Application Container -->
+    <div id="app-container" class="w-full h-full flex relative">
+
+        <!-- Left Panel: Live Dashboard -->
+        <aside id="left-panel" class="neu-panel flex flex-col h-full w-[300px] p-4 space-y-4 sidebar">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-700 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold tracking-wider text-white">wwhnetwork</h2>
+                    <p class="text-xs text-indigo-300 -mt-1">by geeksahil</p>
+                </div>
+                 <button id="left-panel-close-mobile" class="lg:hidden text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            
+            <!-- Simulation Controls -->
+            <div class="neu-inset p-3 space-y-3 flex-shrink-0">
+                 <div class="grid grid-cols-3 gap-2">
+                    <button id="play-pause-btn" class="neu-button p-2 rounded-lg text-sm" disabled>Play</button>
+                    <button id="reset-btn" class="neu-button p-2 rounded-lg text-sm" disabled>Reset</button>
+                    <button id="clear-log-btn" class="neu-button p-2 rounded-lg text-sm">Clear</button>
+                </div>
+                <div class="flex items-center space-x-2 text-sm">
+                    <label for="speed-slider">Speed:</label>
+                    <input id="speed-slider" type="range" min="0.5" max="5" value="1" step="0.1" class="w-full">
+                    <span id="speed-value" class="w-8 text-center">1.0x</span>
+                </div>
+            </div>
+
+            <!-- Live Event Log -->
+            <div class="flex-grow flex flex-col overflow-hidden basis-1/2">
+                <h3 class="text-lg font-semibold mb-2 text-white">Event Log</h3>
+                <div id="event-log" class="neu-inset flex-grow p-2 overflow-y-auto text-xs space-y-1">
+                    <div class="text-gray-500">Waiting for simulation to start...</div>
+                </div>
+            </div>
+
+            <!-- Process Log -->
+            <div class="flex-grow flex flex-col overflow-hidden basis-1/2">
+                <h3 class="text-lg font-semibold mb-2 text-white">Process Log</h3>
+                <div id="process-log" class="neu-inset flex-grow p-2 overflow-y-auto text-sm">
+                     <div class="text-gray-500">Awaiting process start...</div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Left Panel Toggle Button -->
+        <button id="left-panel-toggle" class="sidebar-toggle neu-button rounded-r-lg flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+        </button>
+
+        <!-- Center Canvas: Network Map -->
+        <main id="main-content" class="h-full flex-grow">
+            <div id="network-canvas-container" class="w-full h-full relative overflow-hidden">
+                <svg id="wires-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></svg>
+                <div id="network-canvas" class="relative w-full h-full">
+                    <!-- Network components will be rendered here -->
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel: Telemetry -->
+        <aside id="right-panel" class="neu-panel flex flex-col h-full w-[420px] p-4 space-y-4 sidebar">
+            <div class="flex items-center justify-between pb-2 border-b border-gray-700 flex-shrink-0">
+                <h2 class="text-xl font-bold tracking-wider text-white">Telemetry</h2>
+                <button id="right-panel-close-mobile" class="lg:hidden text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+
+            <!-- OSI Model -->
+            <div class="basis-2/5 flex flex-col overflow-hidden min-h-0">
+                <h3 class="text-lg font-semibold mb-2 text-white">OSI Model</h3>
+                <div id="osi-model" class="neu-inset p-3 flex-grow space-y-1 text-sm flex flex-col justify-around">
+                    <!-- OSI Layers will be generated here -->
+                </div>
+            </div>
+
+            <!-- Packet Inspector -->
+            <div class="basis-3/5 flex flex-col overflow-hidden min-h-0">
+                <h3 class="text-lg font-semibold mb-2 text-white">Packet Inspector Log</h3>
+                <div id="packet-inspector" class="neu-inset flex-grow p-2 overflow-y-auto text-xs space-y-2">
+                     <div class="text-gray-500">Waiting for packet...</div>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Right Panel Toggle Button -->
+        <button id="right-panel-toggle" class="sidebar-toggle neu-button rounded-l-lg flex items-center justify-center">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+    </div>
+
+    <!-- Universal Modal -->
+    <div id="info-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+        <div class="neu-panel w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <h2 id="modal-title" class="text-2xl font-bold text-white">Component Details</h2>
+                <button id="modal-close-btn" class="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="modal-content" class="p-6 space-y-4 overflow-y-auto">
+                <!-- Modal content goes here -->
+            </div>
+            <div id="modal-footer" class="p-4 border-t border-gray-700 flex justify-end">
+                <!-- Modal footer for buttons etc. -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Firewall Scan Modal -->
+    <div id="firewall-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+        <div class="neu-panel w-full max-w-md max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-gray-700">
+                <h2 class="text-2xl font-bold text-white">Firewall Inspection</h2>
+            </div>
+            <div id="firewall-scan-content" class="p-6 overflow-y-auto">
+                <div class="text-center mb-4">
+                    <svg class="w-16 h-16 text-blue-400 mx-auto animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="mt-2 text-lg">Scanning packets...</p>
+                </div>
+                <div id="firewall-rules" class="space-y-2 text-sm"></div>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- DOM ELEMENT REFERENCES ---
+    const getEl = (id) => document.getElementById(id);
+    const ui = {
+        mainContent: getEl('main-content'),
+        leftPanel: getEl('left-panel'),
+        leftPanelToggle: getEl('left-panel-toggle'),
+        leftPanelCloseMobile: getEl('left-panel-close-mobile'),
+        rightPanel: getEl('right-panel'),
+        rightPanelToggle: getEl('right-panel-toggle'),
+        rightPanelCloseMobile: getEl('right-panel-close-mobile'),
+        backdrop: getEl('backdrop'),
+        playPauseBtn: getEl('play-pause-btn'),
+        resetBtn: getEl('reset-btn'),
+        clearLogBtn: getEl('clear-log-btn'),
+        speedSlider: getEl('speed-slider'),
+        speedValue: getEl('speed-value'),
+        eventLog: getEl('event-log'),
+        networkCanvasContainer: getEl('network-canvas-container'),
+        networkCanvas: getEl('network-canvas'),
+        wiresSvg: getEl('wires-svg'),
+        osiModel: getEl('osi-model'),
+        packetInspector: getEl('packet-inspector'),
+        processLog: getEl('process-log'),
+        infoModal: {
+            container: getEl('info-modal'),
+            title: getEl('modal-title'),
+            content: getEl('modal-content'),
+            footer: getEl('modal-footer'),
+            closeBtn: getEl('modal-close-btn'),
+        },
+        firewallModal: {
+            container: getEl('firewall-modal'),
+            content: getEl('firewall-scan-content'),
+            rules: getEl('firewall-rules'),
+        }
+    };
+
+    // --- SIMULATION STATE ---
+    let simState = {
+        isRunning: false,
+        isPaused: false,
+        speed: 1.0,
+        startTime: 0,
+        elapsedTime: 0,
+        maliciousPacketEnabled: false,
+        activeSimulation: null,
+        isDraggable: true,
+    };
+    
+    // --- OSI & NETWORK DATA ---
+    const osiLayers = [
+        { name: '7. Application', desc: 'Provides network services to applications.' },
+        { name: '6. Presentation', desc: 'Translates, encrypts, and compresses data.' },
+        { name: '5. Session', desc: 'Establishes, manages, and terminates connections.' },
+        { name: '4. Transport', desc: 'Provides reliable data transfer (TCP/UDP).' },
+        { name: '3. Network', desc: 'Moves packets across networks (IP addressing).' },
+        { name: '2. Data Link', desc: 'Transfers data between adjacent nodes (MAC addressing).' },
+        { name: '1. Physical', desc: 'Transmits raw bit stream over the physical medium.' },
+    ];
+
+    const componentIcons = {
+        'user-pc': `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-300" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a2 2 0 00-2 2v12a2 2 0 002 2h6a2 2 0 002-2V4a2 2 0 00-2-2h-6zm-2 2h8v10h-8V4z" /><path d="M4 4a2 2 0 012-2h2v12H6a2 2 0 01-2-2V4z" /></svg>`,
+        'modem': `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm4 6a1 1 0 100 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /><circle cx="4" cy="7" r="1" class="blinking-light"/>`,
+        'isp-router': `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-300" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h10a2 2 0 002-2v-2a2 2 0 00-2-2H5z" /><circle cx="7" cy="6" r="1" class="blinking-light" style="animation-delay: 0.5s;"/><circle cx="13" cy="14" r="1" class="blinking-light" style="animation-delay: 1s;"/>`,
+        'firewall': `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`,
+        'data-center': `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-300" viewBox="0 0 20 20" fill="currentColor"><path d="M2 3a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm0 4a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1V7zm0 4a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2zm0 4a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2z" /></svg>`,
+        'web-server': `<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-300" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM2 10a8 8 0 1116 0 8 8 0 01-16 0z" /><path d="M12.293 6.293a1 1 0 011.414 0l2 2a1 1 0 01-1.414 1.414L13 8.414V14a1 1 0 11-2 0V8.414l-1.293 1.293a1 1 0 01-1.414-1.414l2-2zM8 6a1 1 0 11-2 0v5.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l2-2a1 1 0 00-1.414-1.414L8 11.586V6z" /></svg>`,
+    };
+
+    const networkData = {
+        'user-pc': {
+            name: 'Your Computer', ip: '192.168.1.101', mac: '0A:1B:2C:3D:4E:5F', subnet: '255.255.255.0',
+            pos: { x: 10, y: 45 },
+            info: {
+                what: "This is a client device, like your laptop or desktop. It's where you initiate requests to access resources on the internet, such as websites or files.",
+                why: "It's the starting point of your network journey. Without a client, you wouldn't be able to browse the web, send emails, or stream content. It's your personal gateway to the digital world.",
+                how: "It runs applications like web browsers. When you enter a URL, the browser creates an HTTP request. The computer's operating system then takes this request and packages it for network travel, sending it through the layers of the OSI model."
+            }
+        },
+        'modem': {
+            name: 'Modem', ip: '203.0.113.42', mac: 'F1:E2:D3:C4:B5:A6', subnet: 'N/A',
+            pos: { x: 25, y: 45 },
+            info: {
+                what: "A MOdulator-DEModulator. It converts digital signals from your computer into analog signals that can travel over your ISP's physical lines (like coaxial or fiber) and vice versa.",
+                why: "Computers speak digital, but many internet infrastructure lines speak analog. The modem is the essential translator that bridges this communication gap.",
+                how: "It modulates the outgoing digital data onto an analog carrier wave and demodulates incoming analog waves back into digital data for your computer to understand. It operates primarily at the Physical (Layer 1) and Data Link (Layer 2) layers."
+            }
+        },
+        'isp-router': {
+            name: 'ISP Router', ip: '203.0.113.1', mac: '9A:8B:7C:6D:5E:4F', subnet: '255.255.255.0',
+            pos: { x: 40, y: 45 },
+            info: {
+                what: "A powerful router at your Internet Service Provider's (ISP) local office (or Point of Presence). It connects your home network to the wider internet.",
+                why: "This is the first major hub your data hits. It's responsible for looking at your data's destination IP address and deciding the best path to send it on its way across the vast network of the internet.",
+                how: "It maintains large routing tables that map IP address ranges to network paths. When your packet arrives, it reads the destination IP in the Layer 3 header and forwards it to the next router in the chain. This is a core function of the Network Layer (Layer 3)."
+            }
+        },
+        'firewall': {
+            name: 'Firewall', ip: '172.16.0.1', mac: 'A1:B2:C3:D4:E5:F6', subnet: '255.255.0.0',
+            pos: { x: 60, y: 45 },
+            info: {
+                what: "A network security device that monitors incoming and outgoing network traffic and decides whether to allow or block specific traffic based on a defined set of security rules.",
+                why: "It's the security guard for a network. It protects the internal network (like a data center) from unauthorized access, malware, and other cyber threats from the outside internet.",
+                how: "It inspects each packet that passes through it. It checks the packet's source/destination IP addresses, ports (Layer 4), and sometimes even the data payload against its configured ruleset. If a packet violates a rule, it is dropped and not allowed to proceed."
+            }
+        },
+        'data-center': {
+            name: 'Data Center', ip: '172.16.0.100', mac: 'B1:C2:D3:E4:F5:A6', subnet: '255.255.0.0',
+            pos: { x: 75, y: 45 },
+            info: {
+                what: "A large-scale facility that houses servers, storage systems, and networking equipment. It's the physical home of the applications and data you access online.",
+                why: "It provides a secure, reliable, and high-performance environment for hosting web services. Centralizing resources allows for easier management, better security, and scalability.",
+                how: "It contains racks of servers connected by high-speed switches and routers. When a request arrives, it's directed to the appropriate server which processes the request and retrieves the necessary data."
+            }
+        },
+        'web-server': {
+            name: 'Web Server', ip: '172.16.0.254', mac: 'C1:D2:E3:F4:A5:B6', subnet: '255.255.0.0',
+            pos: { x: 90, y: 45 },
+            info: {
+                what: "A server computer that stores website files (HTML, CSS, images) and delivers them to users' web browsers upon request.",
+                why: "This is the final destination for a web request. It holds the content you want to see and is responsible for sending it back to you so your browser can display it.",
+                how: "It runs web server software (like Apache or Nginx) that listens for incoming HTTP requests on specific ports (e.g., 80 for HTTP, 443 for HTTPS). When a request for a file arrives, it finds the file and sends it back in an HTTP response."
+            }
+        }
+    };
+
+    const wireData = [
+        { from: 'user-pc', to: 'modem', type: 'Ethernet', color: '#3b82f6' },
+        { from: 'modem', to: 'isp-router', type: 'Coaxial', color: '#e5e7eb' },
+        { from: 'isp-router', to: 'firewall', type: 'Fiber', color: '#f97316' },
+        { from: 'firewall', to: 'data-center', type: 'Fiber', color: '#f97316' },
+        { from: 'data-center', to: 'web-server', type: 'Ethernet', color: '#3b82f6' },
+    ];
+    
+    // --- INITIALIZATION ---
+    function init() {
+        renderOSIModel();
+        renderComponents();
+        renderWires();
+        setupEventListeners();
+        clearLogs();
+    }
+
+    // --- RENDERING FUNCTIONS ---
+    function renderOSIModel() {
+        ui.osiModel.innerHTML = osiLayers.map(layer => `
+            <div id="osi-${layer.name.split('.')[0]}" class="osi-layer p-1.5 rounded-md border border-transparent transition-all duration-300">
+                <p class="font-semibold">${layer.name}</p>
+            </div>
+        `).join('');
+    }
+
+    function renderComponents() {
+        ui.networkCanvas.innerHTML = '';
+        Object.entries(networkData).forEach(([id, data]) => {
+            const el = document.createElement('div');
+            el.id = id;
+            el.className = 'component neu-panel absolute p-3 w-52 cursor-grab border-2 border-transparent select-none z-10 flex flex-col items-center';
+            el.style.left = `${data.pos.x}%`;
+            el.style.top = `${data.pos.y}%`;
+            el.style.transform = 'translate(-50%, -50%)';
+            el.innerHTML = `
+                <div class="flex items-center gap-3 w-full">
+                    ${componentIcons[id] || ''}
+                    <p class="font-bold text-center text-white text-md">${data.name}</p>
+                </div>
+                <div class="text-xs mt-2 space-y-1 text-gray-400 w-full border-t border-gray-700 pt-2">
+                    <p><strong>IP:</strong> ${data.ip}</p>
+                    <p><strong>MAC:</strong> ${data.mac}</p>
+                    <p><strong>Subnet:</strong> ${data.subnet}</p>
+                </div>
+            `;
+            ui.networkCanvas.appendChild(el);
+            makeDraggable(el);
+            el.addEventListener('click', () => {
+                if (!simState.isRunning) {
+                    openInfoModal(id);
+                }
+            });
+        });
+    }
+
+    function renderWires() {
+        ui.wiresSvg.innerHTML = '';
+        wireData.forEach((wire, i) => {
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.id = `wire-group-${i}`;
+            g.classList.add('wire');
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.id = `wire-${i}`;
+            line.setAttribute('stroke', wire.color);
+            
+            const marchingAnts = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            marchingAnts.id = `wire-ants-${i}`;
+            marchingAnts.setAttribute('stroke', 'white');
+            marchingAnts.setAttribute('stroke-width', '1');
+            marchingAnts.setAttribute('stroke-dasharray', '10 10');
+            marchingAnts.classList.add('marching-ants');
+
+            g.appendChild(line);
+            g.appendChild(marchingAnts);
+            ui.wiresSvg.appendChild(g);
+        });
+        updateAllWirePositions();
+    }
+    
+    function updateAllWirePositions() {
+        requestAnimationFrame(() => {
+            wireData.forEach((wire, i) => {
+                const fromEl = getEl(wire.from);
+                const toEl = getEl(wire.to);
+                const line = getEl(`wire-${i}`);
+                const ants = getEl(`wire-ants-${i}`);
+                
+                if (fromEl && toEl && line) {
+                    const fromRect = fromEl.getBoundingClientRect();
+                    const toRect = toEl.getBoundingClientRect();
+                    const containerRect = ui.networkCanvasContainer.getBoundingClientRect();
+
+                    const x1 = fromRect.left + fromRect.width / 2 - containerRect.left;
+                    const y1 = fromRect.top + fromRect.height / 2 - containerRect.top;
+                    const x2 = toRect.left + toRect.width / 2 - containerRect.left;
+                    const y2 = toRect.top + toRect.height / 2 - containerRect.top;
+
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                    
+                    ants.setAttribute('x1', x1);
+                    ants.setAttribute('y1', y1);
+                    ants.setAttribute('x2', x2);
+                    ants.setAttribute('y2', y2);
+                }
+            });
+        });
+    }
+
+    // --- EVENT LISTENERS & UI INTERACTIONS ---
+    function setupEventListeners() {
+        const isMobile = () => window.innerWidth <= 1024;
+
+        const toggleLeftPanel = () => {
+            if (isMobile()) {
+                ui.rightPanel.classList.remove('open');
+                ui.leftPanel.classList.toggle('open');
+                ui.backdrop.classList.toggle('hidden', !ui.leftPanel.classList.contains('open'));
+            } else {
+                ui.leftPanel.classList.toggle('collapsed');
+            }
+        };
+
+        const toggleRightPanel = () => {
+            if (isMobile()) {
+                ui.leftPanel.classList.remove('open');
+                ui.rightPanel.classList.toggle('open');
+                ui.backdrop.classList.toggle('hidden', !ui.rightPanel.classList.contains('open'));
+            } else {
+                ui.rightPanel.classList.toggle('collapsed');
+            }
+        };
+
+        ui.leftPanelToggle.addEventListener('click', toggleLeftPanel);
+        ui.rightPanelToggle.addEventListener('click', toggleRightPanel);
+
+        ui.leftPanelCloseMobile.addEventListener('click', () => {
+             ui.leftPanel.classList.remove('open');
+             ui.backdrop.classList.add('hidden');
+        });
+        ui.rightPanelCloseMobile.addEventListener('click', () => {
+            ui.rightPanel.classList.remove('open');
+            ui.backdrop.classList.add('hidden');
+        });
+        ui.backdrop.addEventListener('click', () => {
+            ui.leftPanel.classList.remove('open');
+            ui.rightPanel.classList.remove('open');
+            ui.backdrop.classList.add('hidden');
+        });
+        
+        ['transitionend', 'resize'].forEach(evt => {
+            window.addEventListener(evt, updateAllWirePositions);
+        });
+        
+        ui.playPauseBtn.addEventListener('click', togglePlayPause);
+        ui.resetBtn.addEventListener('click', resetSimulation);
+        ui.clearLogBtn.addEventListener('click', () => {
+            clearLogs();
+            logEvent("Logs cleared.");
+        });
+
+        ui.speedSlider.addEventListener('input', (e) => {
+            simState.speed = parseFloat(e.target.value);
+            ui.speedValue.textContent = `${simState.speed.toFixed(1)}x`;
+        });
+
+        ui.infoModal.closeBtn.addEventListener('click', closeInfoModal);
+        ui.infoModal.container.addEventListener('click', (e) => {
+            if (e.target === ui.infoModal.container) closeInfoModal();
+        });
+
+        // Initialize panel states on load
+        if (isMobile()) {
+            ui.leftPanel.classList.add('collapsed');
+            ui.rightPanel.classList.add('collapsed');
+        }
+    }
+
+    function makeDraggable(element) {
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        const startDrag = (e) => {
+            if (!simState.isDraggable) return;
+            isDragging = true;
+            element.classList.add('cursor-grabbing');
+            
+            const event = e.type === 'touchstart' ? e.touches[0] : e;
+            offsetX = event.clientX - element.offsetLeft;
+            offsetY = event.clientY - element.offsetTop;
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchmove', onDrag, { passive: false });
+            document.addEventListener('touchend', endDrag);
+        };
+        
+        const onDrag = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const event = e.type === 'touchmove' ? e.touches[0] : e;
+            const containerRect = ui.networkCanvas.getBoundingClientRect();
+            let newX = event.clientX - offsetX;
+            let newY = event.clientY - offsetY;
+            
+            newX = Math.max(0, Math.min(newX, containerRect.width - element.offsetWidth));
+            newY = Math.max(0, Math.min(newY, containerRect.height - element.offsetHeight));
+
+            element.style.left = `${newX}px`;
+            element.style.top = `${newY}px`;
+            
+            const componentData = networkData[element.id];
+            if(componentData) {
+                const halfWidth = element.offsetWidth / 2;
+                const halfHeight = element.offsetHeight / 2;
+                componentData.pos.x = ((newX + halfWidth) / containerRect.width) * 100;
+                componentData.pos.y = ((newY + halfHeight) / containerRect.height) * 100;
+            }
+            updateAllWirePositions();
+        };
+
+        const endDrag = () => {
+            isDragging = false;
+            element.classList.remove('cursor-grabbing');
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', endDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('touchend', endDrag);
+        };
+
+        element.addEventListener('mousedown', startDrag);
+        element.addEventListener('touchstart', startDrag);
+    }
+
+    function openInfoModal(componentId) {
+        const data = networkData[componentId];
+        if (!data) return;
+        
+        ui.infoModal.title.textContent = data.name;
+        
+        if (componentId === 'user-pc') {
+             ui.infoModal.content.innerHTML = `
+                <div class="neu-inset p-4 h-64 flex flex-col items-center justify-center bg-gray-900/50">
+                    <h3 class="text-xl font-bold text-white mb-4">Welcome to Your Computer</h3>
+                    <p class="text-gray-400 mb-6">Click the icon below to open the web browser and start the simulation.</p>
+                    <button id="open-browser-btn" class="neu-button p-4 rounded-2xl text-white flex flex-col items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m0 18a9 9 0 009-9M3 12a9 9 0 019-9m-9 9h18" />
+                        </svg>
+                        <span>Web Browser</span>
+                    </button>
+                </div>
+            `;
+            ui.infoModal.footer.innerHTML = '';
+            getEl('open-browser-btn').onclick = () => {
+                closeInfoModal();
+                createBrowserCard();
+            };
+
+        } else {
+             ui.infoModal.content.innerHTML = `
+                <div class="neu-inset p-4">
+                    <h3 class="text-lg font-bold text-white mb-2">WHAT is it?</h3>
+                    <p class="text-gray-300">${data.info.what}</p>
+                </div>
+                <div class="neu-inset p-4">
+                    <h3 class="text-lg font-bold text-white mb-2">WHY is it necessary?</h3>
+                    <p class="text-gray-300">${data.info.why}</p>
+                </div>
+                <div class="neu-inset p-4">
+                    <h3 class="text-lg font-bold text-white mb-2">HOW does it work?</h3>
+                    <p class="text-gray-300">${data.info.how}</p>
+                </div>
+            `;
+            ui.infoModal.footer.innerHTML = ''; // Clear footer
+        }
+        
+        if (componentId === 'firewall') {
+            const toggleContainer = document.createElement('div');
+            toggleContainer.className = 'flex items-center space-x-3';
+            toggleContainer.innerHTML = `
+                <label for="malicious-toggle" class="text-white">Simulate Malicious Packet:</label>
+                <button id="malicious-toggle" role="switch" aria-checked="${simState.maliciousPacketEnabled}" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none bg-gray-600">
+                    <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+            `;
+            const toggleBtn = toggleContainer.querySelector('#malicious-toggle');
+            const toggleSpan = toggleBtn.querySelector('span');
+
+            const updateToggleUI = () => {
+                if (simState.maliciousPacketEnabled) {
+                    toggleBtn.classList.replace('bg-gray-600', 'bg-indigo-500');
+                    toggleSpan.style.transform = 'translateX(1.25rem)';
+                } else {
+                    toggleBtn.classList.replace('bg-indigo-500', 'bg-gray-600');
+                    toggleSpan.style.transform = 'translateX(0)';
+                }
+            };
+            
+            toggleBtn.addEventListener('click', () => {
+                simState.maliciousPacketEnabled = !simState.maliciousPacketEnabled;
+                toggleBtn.setAttribute('aria-checked', simState.maliciousPacketEnabled);
+                updateToggleUI();
+                logEvent(`Malicious packet simulation ${simState.maliciousPacketEnabled ? 'ENABLED' : 'DISABLED'}.`, simState.maliciousPacketEnabled ? 'error' : 'info');
+            });
+            
+            ui.infoModal.footer.appendChild(toggleContainer);
+            updateToggleUI();
+        }
+
+        ui.infoModal.container.classList.remove('hidden');
+    }
+    
+    function closeInfoModal() {
+        ui.infoModal.container.classList.add('hidden');
+    }
+
+    function createBrowserCard() {
+        if(getEl('browser-card')) return;
+
+        const card = document.createElement('div');
+        card.id = 'browser-card';
+        card.className = 'neu-panel absolute p-3 w-96 z-20 cursor-grab flex flex-col';
+        card.style.left = '15%';
+        card.style.top = '20%';
+        card.innerHTML = `
+            <div class="flex items-center justify-between pb-2 border-b border-gray-600 mb-2 flex-shrink-0">
+                <span class="text-sm font-semibold text-white">🌐 Browser</span>
+                <button id="browser-close-btn" class="text-2xl text-gray-400 hover:text-white leading-none">&times;</button>
+            </div>
+            <div class="flex items-center p-1 bg-gray-900 rounded-md mb-2 flex-shrink-0">
+                <input id="url-input" type="text" class="bg-transparent w-full text-sm outline-none px-2 text-gray-300" placeholder="https://www.example-server.com/data.zip">
+                <button id="go-btn" class="neu-button text-sm px-4 py-1 rounded-md">Go</button>
+            </div>
+            <div id="browser-content-area" class="neu-inset mt-1 p-3 text-sm text-center text-gray-400 flex-grow flex items-center justify-center">
+                <div id="browser-status">Enter a URL and press 'Go' to start.</div>
+            </div>
+        `;
+        ui.networkCanvas.appendChild(card);
+        makeDraggable(card);
+
+        const goBtn = getEl('go-btn');
+        const urlInput = getEl('url-input');
+
+        getEl('browser-close-btn').onclick = () => card.remove();
+        
+        const triggerSim = () => {
+             if (urlInput.value.trim() === "") {
+                urlInput.focus();
+                urlInput.classList.add('ring-2', 'ring-red-500');
+                setTimeout(() => urlInput.classList.remove('ring-2', 'ring-red-500'), 2000);
+                return;
+            }
+            // Start the larger simulation by default for a better visual
+            startSimulation('Image', 1000, 8);
+            goBtn.disabled = true;
+            urlInput.disabled = true;
+        };
+        
+        goBtn.onclick = triggerSim;
+        urlInput.onkeydown = (e) => {
+            if (e.key === 'Enter') triggerSim();
+        }
+    }
+
+    // --- LOGGING & UI UPDATES ---
+    function logEvent(message, type = 'info') {
+        const entry = document.createElement('div');
+        const timestamp = new Date().toLocaleTimeString();
+        let colorClass = 'text-gray-400';
+        if (type === 'success') colorClass = 'text-green-400';
+        if (type === 'error') colorClass = 'text-red-400';
+        if (type === 'warn') colorClass = 'text-yellow-400';
+
+        entry.innerHTML = `<span class="font-mono text-gray-500">${timestamp}</span> <span class="${colorClass}">${message}</span>`;
+        if (ui.eventLog.firstChild && ui.eventLog.firstChild.textContent.includes('Waiting')) {
+            ui.eventLog.innerHTML = '';
+        }
+        ui.eventLog.appendChild(entry);
+        ui.eventLog.scrollTop = ui.eventLog.scrollHeight;
+    }
+
+    function logProcess(message) {
+        if (ui.processLog.firstChild && ui.processLog.firstChild.textContent.includes('Awaiting')) {
+            ui.processLog.innerHTML = '';
+        }
+        const entry = document.createElement('p');
+        entry.textContent = message;
+        ui.processLog.appendChild(entry);
+        ui.processLog.scrollTop = ui.processLog.scrollHeight;
+    }
+    
+    function logPacketInspection(packet, location, direction) {
+        const isEncapsulation = direction === 'out';
+        const entry = document.createElement('div');
+        entry.className = 'p-2 border border-gray-700 rounded-md';
+        entry.innerHTML = `
+            <p class="font-bold text-indigo-300">Packet ${packet.id} at ${networkData[location].name} (${isEncapsulation ? 'Encapsulation' : 'De-encapsulation'})</p>
+            <div class="font-mono text-gray-400 mt-1">
+                <p><strong>L4 (TCP):</strong> Src Port: ${packet.srcPort}, Dst Port: ${packet.dstPort}</p>
+                <p><strong>L3 (IP):</strong> Src IP: ${packet.srcIp}, Dst IP: ${packet.dstIp}</p>
+                <p><strong>L2 (MAC):</strong> Src MAC: ${packet.srcMac}, Dst MAC: ${packet.dstMac}</p>
+            </div>
+        `;
+        if (ui.packetInspector.firstChild && ui.packetInspector.firstChild.textContent.includes('Waiting')) {
+            ui.packetInspector.innerHTML = '';
+        }
+        ui.packetInspector.appendChild(entry);
+        ui.packetInspector.scrollTop = ui.packetInspector.scrollHeight;
+    }
+
+    function clearLogs() {
+        ui.eventLog.innerHTML = `<div class="text-gray-500">Waiting for simulation to start...</div>`;
+        ui.packetInspector.innerHTML = `<div class="text-gray-500">Waiting for packet...</div>`;
+        ui.processLog.innerHTML = `<div class="text-gray-500">Awaiting process start...</div>`;
+    }
+    
+    function highlightOSILayer(layerIndex, direction) {
+        document.querySelectorAll('.osi-layer').forEach(el => {
+            el.classList.remove('glowing', 'bg-indigo-900/50');
+        });
+        if (layerIndex !== null) {
+            const layerEl = getEl(`osi-${7 - layerIndex}`);
+            if (layerEl) {
+                layerEl.classList.add('glowing', 'bg-indigo-900/50');
+            }
+        }
+    }
+    
+    function updateBrowserStatus(message, type = 'info') {
+        const statusEl = getEl('browser-status');
+        if(!statusEl) return;
+        
+        let colorClass = 'text-gray-400';
+        if (type === 'success') colorClass = 'text-green-400';
+        else if (type === 'error') colorClass = 'text-red-400';
+
+        statusEl.innerHTML = `<span class="${colorClass}">${message}</span>`;
+    }
+
+    function showBrowserLoading() {
+        const statusEl = getEl('browser-status');
+        if(!statusEl) return;
+        statusEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center gap-2">
+                 <svg class="w-8 h-8 text-blue-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-gray-400">Loading...</span>
+            </div>
+        `;
+    }
+
+    // --- SIMULATION CORE LOGIC ---
+    
+    class Simulation {
+        constructor(requestType, dataSize, numPackets) {
+            this.requestType = requestType;
+            this.dataSize = dataSize;
+            this.numPackets = numPackets;
+            this.path = ['user-pc', 'modem', 'isp-router', 'firewall', 'data-center', 'web-server'];
+            this.packets = [];
+            this.lastFrameTime = 0;
+            this.animationFrameId = null;
+            this.isComplete = false;
+        }
+
+        async start() {
+            simState.isRunning = true;
+            simState.isPaused = false;
+            simState.isDraggable = false;
+            simState.startTime = performance.now();
+            
+            logEvent(`Starting simulation...`, 'warn');
+            showBrowserLoading();
+
+            const handshakeSuccess = await this.performHandshake();
+
+            if (this.isComplete) return; // Simulation was reset during handshake
+
+            if (handshakeSuccess) {
+                logEvent('TCP Connection Established.', 'success');
+                logProcess('Connection established. Preparing to send data.');
+                this.createInitialDataBlock();
+                setTimeout(() => this.segmentData(), 1000);
+            } else {
+                this.finishSimulation(true, "TCP Handshake Failed");
+            }
+        }
+
+        async performHandshake() {
+            if (this.isComplete) return false;
+            logProcess('Initiating TCP 3-Way Handshake...');
+            
+            logProcess('Client -> Server: [SYN]');
+            await this.animateControlPacket('SYN', this.path, '#f97316');
+            if (this.isComplete) return false;
+
+            logProcess('Server -> Client: [SYN-ACK]');
+            await this.animateControlPacket('SYN-ACK', [...this.path].reverse(), '#fb923c');
+            if (this.isComplete) return false;
+            
+            logProcess('Client -> Server: [ACK]');
+            await this.animateControlPacket('ACK', this.path, '#fdba74');
+            if (this.isComplete) return false;
+
+            logProcess('Handshake complete.');
+            return true;
+        }
+
+        moveElementAlongPath(element, fromId, toId) {
+            return new Promise(resolve => {
+                if (this.isComplete) return resolve();
+                const fromEl = getEl(fromId);
+                const toEl = getEl(toId);
+                if (!fromEl || !toEl) return resolve();
+
+                const canvasRect = ui.networkCanvas.getBoundingClientRect();
+                const fromRect = fromEl.getBoundingClientRect();
+                const toRect = toEl.getBoundingClientRect();
+
+                const startX = fromRect.left + fromRect.width / 2 - canvasRect.left;
+                const startY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+                const endX = toRect.left + toRect.width / 2 - canvasRect.left;
+                const endY = toRect.top + toRect.height / 2 - canvasRect.top;
+
+                const animation = element.animate([
+                    { transform: `translate(${startX - (element.offsetWidth/2)}px, ${startY - (element.offsetHeight/2)}px)` },
+                    { transform: `translate(${endX - (element.offsetWidth/2)}px, ${endY - (element.offsetHeight/2)}px)` }
+                ], {
+                    duration: 600 / simState.speed,
+                    easing: 'linear'
+                });
+                
+                animation.onfinish = resolve;
+            });
+        }
+        
+        async animateControlPacket(type, path, color) {
+            return new Promise(async (resolve) => {
+                if (this.isComplete) return resolve();
+                const packetEl = document.createElement('div');
+                packetEl.className = 'packet absolute w-24 h-8 rounded-md flex items-center justify-center text-xs font-bold z-50';
+                packetEl.textContent = type;
+                packetEl.style.backgroundColor = color;
+                packetEl.style.color = '#111827';
+                packetEl.style.boxShadow = 'var(--glow-shadow)';
+                
+                const startNodeId = path[0];
+                const startNodeEl = getEl(startNodeId);
+                const canvasRect = ui.networkCanvas.getBoundingClientRect();
+                const startRect = startNodeEl.getBoundingClientRect();
+
+                packetEl.style.left = `0px`;
+                packetEl.style.top =  `0px`;
+                packetEl.style.transform = `translate(${startRect.left + startRect.width / 2 - canvasRect.left - packetEl.offsetWidth/2}px, ${startRect.top + startRect.height / 2 - canvasRect.top - packetEl.offsetHeight/2}px)`;
+                
+                ui.networkCanvas.appendChild(packetEl);
+
+                for (let i = 0; i < path.length - 1; i++) {
+                    if (this.isComplete) {
+                        packetEl.remove();
+                        return resolve();
+                    }
+                    const fromNodeId = path[i];
+                    const toNodeId = path[i + 1];
+                    
+                    getEl(fromNodeId)?.classList.add('processing-glow');
+                    await this.moveElementAlongPath(packetEl, fromNodeId, toNodeId);
+                    getEl(fromNodeId)?.classList.remove('processing-glow');
+                }
+
+                getEl(path[path.length - 1])?.classList.add('processing-glow');
+                
+                setTimeout(() => {
+                    getEl(path[path.length - 1])?.classList.remove('processing-glow');
+                    packetEl.remove();
+                    resolve();
+                }, 200 / simState.speed);
+            });
+        }
+
+        createInitialDataBlock() {
+            const pc = getEl('user-pc');
+            const dataBlock = document.createElement('div');
+            dataBlock.id = 'data-block';
+            dataBlock.className = 'absolute -top-10 left-1/2 -translate-x-1/2 bg-blue-500 p-4 rounded-lg z-20 text-white text-center';
+            dataBlock.innerHTML = `HTTP Request<br/>${this.dataSize}KB Data`;
+            pc.appendChild(dataBlock);
+        }
+
+        segmentData() {
+            const dataBlock = getEl('data-block');
+            if (dataBlock) dataBlock.remove();
+
+            const pc = getEl('user-pc');
+            const pcRect = pc.getBoundingClientRect();
+            const canvasRect = ui.networkCanvas.getBoundingClientRect();
+
+            for (let i = 0; i < this.numPackets; i++) {
+                const isMalicious = simState.maliciousPacketEnabled && i === Math.floor(this.numPackets / 2);
+                
+                const packet = {
+                    id: i + 1,
+                    isMalicious,
+                    el: this.createPacketElement(i + 1, isMalicious),
+                    pathIndex: 0,
+                    progress: 0,
+                    direction: 'out', // 'out' or 'in'
+                    status: 'queued', // queued, moving, processing, complete, dropped
+                    delay: i * 200 / simState.speed, // Stagger start time
+                    startTime: null,
+                    srcPort: 49152 + i, dstPort: 443,
+                    srcIp: networkData['user-pc'].ip, dstIp: networkData['web-server'].ip,
+                    srcMac: '', dstMac: ''
+                };
+                
+                const startX = pcRect.left - canvasRect.left + (pcRect.width / 2) - 15;
+                const startY = pcRect.top - canvasRect.top - 40 - (i*5);
+                packet.el.style.left = `${startX}px`;
+                packet.el.style.top = `${startY}px`;
+                
+                this.packets.push(packet);
+            }
+            this.lastFrameTime = performance.now();
+            this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
+        }
+
+        createPacketElement(id, isMalicious) {
+            const el = document.createElement('div');
+            el.className = 'packet absolute w-20 h-8 rounded-md flex items-center justify-center text-xs font-bold z-50 transition-colors duration-300';
+            el.innerHTML = `P${id}:443 ${isMalicious ? '💀' : ''}`;
+            el.style.backgroundColor = isMalicious ? 'var(--error-color)' : 'var(--brand-color)';
+            el.style.boxShadow = 'var(--glow-shadow)';
+            ui.networkCanvas.appendChild(el);
+            return el;
+        }
+
+        gameLoop(currentTime) {
+            if (!simState.isRunning || this.isComplete) return;
+            if (simState.isPaused) {
+                this.lastFrameTime = currentTime;
+                this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
+                return;
+            }
+
+            const deltaTime = (currentTime - this.lastFrameTime) * simState.speed;
+            this.lastFrameTime = currentTime;
+
+            this.packets.forEach(p => {
+                if (p.status === 'complete' || p.status === 'dropped') return;
+
+                if (p.status === 'queued') {
+                    p.delay -= deltaTime;
+                    if (p.delay <= 0) {
+                        p.status = 'moving';
+                        p.startTime = performance.now();
+                        const from = this.getCurrentNodeId(p);
+                        getEl(from).classList.add('processing-glow');
+                        this.processOSI(p, from, 'out');
+                    }
+                    return;
+                }
+
+                if (p.status === 'moving') {
+                    this.movePacket(p, deltaTime);
+                }
+            });
+            
+            if (this.packets.every(p => p.status === 'complete' || p.status === 'dropped')) {
+                 this.finishSimulation(false);
+            } else {
+                 this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
+            }
+        }
+        
+        movePacket(packet, deltaTime) {
+            if (this.isComplete) return;
+            const fromNodeId = this.getCurrentNodeId(packet);
+            const toNodeId = this.getNextNodeId(packet);
+
+            const fromEl = getEl(fromNodeId);
+            const toEl = getEl(toNodeId);
+            
+            if(!fromEl || !toEl) return;
+            
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+            const canvasRect = ui.networkCanvas.getBoundingClientRect();
+
+            const startX = fromRect.left + fromRect.width / 2 - canvasRect.left;
+            const startY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+            const endX = toRect.left + toRect.width / 2 - canvasRect.left;
+            const endY = toRect.top + toRect.height / 2 - canvasRect.top;
+
+            const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            const travelSpeed = 0.2; // pixels per ms
+            const increment = (travelSpeed / distance) * deltaTime;
+            
+            packet.progress += increment;
+
+            if (packet.progress >= 1) {
+                packet.progress = 1;
+                this.handlePacketArrival(packet);
+            }
+
+            const currentX = startX + (endX - startX) * packet.progress;
+            const currentY = startY + (endY - startY) * packet.progress;
+            
+            packet.el.style.left = `${currentX - packet.el.offsetWidth / 2}px`;
+            packet.el.style.top = `${currentY - packet.el.offsetHeight / 2}px`;
+        }
+
+        async handlePacketArrival(packet) {
+            if (this.isComplete) return;
+            packet.status = 'processing';
+            const fromNodeId = this.getCurrentNodeId(packet);
+            const toNodeId = this.getNextNodeId(packet);
+
+            getEl(fromNodeId)?.classList.remove('processing-glow');
+            getEl(toNodeId)?.classList.add('processing-glow');
+            
+            logEvent(`Packet ${packet.id} arrived at ${networkData[toNodeId].name}.`);
+            this.processOSI(packet, toNodeId, packet.direction === 'out' ? 'in' : 'out'); // de-encap on arrival
+            
+            // Handle Firewall
+            if (toNodeId === 'firewall' && packet.direction === 'out') {
+                simState.isPaused = true;
+                const firewallResult = await this.simulateFirewall(packet);
+                simState.isPaused = false;
+                
+                if (this.isComplete) return;
+                
+                if (!firewallResult) {
+                    packet.status = 'dropped';
+                    packet.el.style.display = 'none';
+                    logEvent(`Packet ${packet.id} DROPPED by firewall.`, 'error');
+                    this.sendConnectionReset();
+                    return;
+                }
+            }
+
+            // Move to next segment
+            packet.pathIndex += 1;
+            packet.progress = 0;
+
+            // Check if end of path reached
+            const currentPath = packet.direction === 'out' ? this.path : [...this.path].reverse();
+            if (packet.pathIndex >= currentPath.length -1) {
+                this.handleDestinationReached(packet);
+            } else {
+                this.processOSI(packet, toNodeId, packet.direction); // re-encap for departure
+                packet.status = 'moving';
+            }
+        }
+        
+        handleDestinationReached(packet) {
+            if (this.isComplete) return;
+             const destNodeId = this.getCurrentNodeId(packet);
+             getEl(destNodeId)?.classList.remove('processing-glow');
+             packet.progress = 0;
+
+             if (packet.direction === 'out') {
+                // Arrived at server
+                logEvent(`Packet ${packet.id} reached Web Server.`, 'success');
+                packet.direction = 'in';
+                packet.pathIndex = 0;
+                // Swap addresses for return trip
+                [packet.srcPort, packet.dstPort] = [packet.dstPort, packet.srcPort];
+                [packet.srcIp, packet.dstIp] = [packet.dstIp, packet.srcIp];
+                
+                // Add a delay to simulate server processing before sending back
+                setTimeout(() => {
+                    if (this.isComplete) return;
+                    packet.status = 'moving';
+                    getEl(destNodeId)?.classList.add('processing-glow');
+                    this.processOSI(packet, destNodeId, 'out');
+                }, 1000 / simState.speed);
+                
+             } else {
+                // Arrived back at client
+                logEvent(`Packet ${packet.id} returned to client.`, 'success');
+                packet.status = 'complete';
+                packet.el.style.display = 'none';
+             }
+        }
+
+        processOSI(packet, location, direction) {
+            if (this.isComplete) return;
+            // direction is 'out' for encapsulation, 'in' for de-encapsulation
+            const fromNode = networkData[this.getCurrentNodeId(packet)];
+            const toNode = networkData[this.getNextNodeId(packet)];
+            
+            if (fromNode && toNode) {
+                 packet.srcMac = fromNode.mac;
+                 packet.dstMac = toNode.mac;
+            }
+            logPacketInspection(packet, location, direction);
+            
+            // Animate OSI layers
+            let i = direction === 'out' ? 0 : 6;
+            const interval = setInterval(() => {
+                if(this.isComplete) {
+                    clearInterval(interval);
+                    return;
+                }
+                highlightOSILayer(i, direction);
+                if (direction === 'out') i++; else i--;
+                if (i < 0 || i > 6) {
+                    clearInterval(interval);
+                    highlightOSILayer(null);
+                }
+            }, 100 / simState.speed);
+        }
+
+        async simulateFirewall(packet) {
+            if (this.isComplete) return true;
+            ui.firewallModal.container.classList.remove('hidden');
+            ui.firewallModal.rules.innerHTML = `
+                <p class="rule p-2 rounded-md bg-gray-800" data-rule="1">Rule 1: ALLOW TCP Port 443 (HTTPS)</p>
+                <p class="rule p-2 rounded-md bg-gray-800" data-rule="2">Rule 2: DENY Malicious Payloads</p>
+            `;
+            
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const rule1 = ui.firewallModal.rules.querySelector('[data-rule="1"]');
+                    rule1.classList.add('bg-green-800');
+                    logProcess("Firewall: Packet port 443 matches ALLOW rule.");
+                    
+                    setTimeout(() => {
+                         const rule2 = ui.firewallModal.rules.querySelector('[data-rule="2"]');
+                         if(packet.isMalicious) {
+                            rule2.classList.add('bg-red-800');
+                            logProcess("Firewall: Malicious payload detected! DENYING packet.");
+                            ui.firewallModal.container.classList.add('hidden');
+                            resolve(false);
+                         } else {
+                            rule2.classList.add('bg-green-800');
+                             logProcess("Firewall: Payload scan clear. ALLOWING packet.");
+                             ui.firewallModal.container.classList.add('hidden');
+                            resolve(true);
+                         }
+                    }, 1500 / simState.speed);
+                }, 1000 / simState.speed);
+            });
+        }
+        
+        sendConnectionReset() {
+            logEvent("Firewall blocked request. Sending Connection Reset.", 'error');
+            this.finishSimulation(true, "Connection blocked by firewall");
+            
+            // Create a visual tracer for the reset signal
+            const resetPath = [...this.path.slice(0, this.path.indexOf('firewall') + 1)].reverse();
+            let tracerIndex = 0;
+            
+            const moveTracer = () => {
+                if (tracerIndex >= resetPath.length - 1) {
+                    updateBrowserStatus('Connection Failed', 'error');
+                    return;
+                }
+                const from = resetPath[tracerIndex];
+                const to = resetPath[tracerIndex + 1];
+                createTracer(from, to, 'var(--error-color)');
+                tracerIndex++;
+                setTimeout(moveTracer, 500 / simState.speed);
+            };
+            moveTracer();
+        }
+        
+        finishSimulation(isError, errorMessage = "") {
+            if (this.isComplete) return;
+            this.isComplete = true;
+
+            cancelAnimationFrame(this.animationFrameId);
+            simState.isRunning = false;
+            simState.isDraggable = true;
+            ui.playPauseBtn.textContent = 'Play';
+            ui.playPauseBtn.disabled = true;
+
+            document.querySelectorAll('.component').forEach(c => c.classList.remove('processing-glow'));
+            
+            const endTime = performance.now();
+            const elapsedTime = Math.round(endTime - simState.startTime);
+            
+            // More robust stat calculation
+            const packetsCompletedRoundTrip = this.packets.filter(p => p.status === 'complete').length;
+            const packetsDropped = this.packets.filter(p => p.status === 'dropped').length;
+            const totalPacketsTransmitted = (packetsCompletedRoundTrip * 2) + packetsDropped;
+
+            const dataTransferred = (totalPacketsTransmitted * 1500 / 1024).toFixed(2);
+            
+            if (isError) {
+                logEvent(`Simulation failed: ${errorMessage}`, 'error');
+                logEvent(`Stats: ${totalPacketsTransmitted} packets transmitted, ${dataTransferred}KB transferred.`);
+                updateBrowserStatus(`Error: ${errorMessage}`, 'error');
+            } else {
+                logEvent(`Simulation completed successfully in ${elapsedTime}ms.`, 'success');
+                logEvent(`Stats: ${totalPacketsTransmitted} packets transmitted, ${dataTransferred}KB transferred.`);
+                updateBrowserStatus('Page loaded successfully!', 'success');
+            }
+        }
+        
+        getCurrentNodeId(packet) {
+            const currentPath = packet.direction === 'out' ? this.path : [...this.path].reverse();
+            return currentPath[packet.pathIndex];
+        }
+        
+        getNextNodeId(packet) {
+            const currentPath = packet.direction === 'out' ? this.path : [...this.path].reverse();
+            return currentPath[packet.pathIndex + 1];
+        }
+    }
+    
+    function createTracer(fromId, toId, color) {
+         const fromEl = getEl(fromId);
+         const toEl = getEl(toId);
+         if (!fromEl || !toEl) return;
+         
+         const tracer = document.createElement('div');
+         tracer.className = 'packet-tracer';
+         tracer.style.width = '10px';
+         tracer.style.height = '10px';
+         tracer.style.backgroundColor = color;
+         
+         const canvasRect = ui.networkCanvas.getBoundingClientRect();
+         const fromRect = fromEl.getBoundingClientRect();
+         const toRect = toEl.getBoundingClientRect();
+         
+         const startX = fromRect.left + fromRect.width / 2 - canvasRect.left;
+         const startY = fromRect.top + fromRect.height / 2 - canvasRect.top;
+         const endX = toRect.left + toRect.width / 2 - canvasRect.left;
+         const endY = toRect.top + toRect.height / 2 - canvasRect.top;
+
+         tracer.style.left = `${startX - 5}px`;
+         tracer.style.top = `${startY - 5}px`;
+         ui.networkCanvas.appendChild(tracer);
+
+         tracer.animate([
+            { transform: `translate(0, 0)` },
+            { transform: `translate(${endX - startX}px, ${endY - startY}px)` }
+         ], {
+            duration: 500 / simState.speed,
+            easing: 'linear'
+         }).onfinish = () => tracer.remove();
+    }
+    
+    // --- SIMULATION CONTROL FUNCTIONS ---
+    function startSimulation(type, size, packets) {
+        // Do not reset here, reset is handled by the user explicitly or on new sim start
+        if(simState.isRunning) return;
+        
+        resetSimulation(); // Ensure a clean slate before starting
+        simState.activeSimulation = new Simulation(type, size, packets);
+        simState.activeSimulation.start();
+        ui.playPauseBtn.disabled = false;
+        ui.resetBtn.disabled = false;
+        ui.playPauseBtn.textContent = 'Pause';
+    }
+
+    function togglePlayPause() {
+        if (!simState.isRunning) return;
+        simState.isPaused = !simState.isPaused;
+        ui.playPauseBtn.textContent = simState.isPaused ? 'Play' : 'Pause';
+        logEvent(`Simulation ${simState.isPaused ? 'paused' : 'resumed'}.`, 'warn');
+    }
+    
+    function resetSimulation() {
+        if (simState.activeSimulation) {
+            simState.activeSimulation.isComplete = true; // Stop any lingering loops
+            cancelAnimationFrame(simState.activeSimulation.animationFrameId);
+        }
+        
+        simState.isRunning = false;
+        simState.isPaused = false;
+        simState.isDraggable = true;
+        simState.activeSimulation = null;
+        
+        ui.playPauseBtn.textContent = 'Play';
+        ui.playPauseBtn.disabled = true;
+        ui.resetBtn.disabled = true;
+        
+        document.querySelectorAll('.packet, #data-block').forEach(el => el.remove());
+        document.querySelectorAll('.component').forEach(c => c.classList.remove('processing-glow'));
+        
+        // Restore browser card
+        const browserCard = getEl('browser-card');
+        if (browserCard) {
+            const goBtn = getEl('go-btn');
+            const urlInput = getEl('url-input');
+            if (goBtn) goBtn.disabled = false;
+            if (urlInput) urlInput.disabled = false;
+            updateBrowserStatus("Enter a URL and press 'Go' to start.");
+        }
+
+        clearLogs();
+        logEvent("Simulation reset. Ready to start.");
+    }
+    
+    // --- RUN ---
+    init();
+});
+</script>
+
+</body>
+</html>
+
